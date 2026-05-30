@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { MoreHorizontal, Plus, Pencil, Trash2, Users, Loader2 } from "lucide-react"
+import { MoreHorizontal, Plus, Pencil, Trash2, Building2, Loader2 } from "lucide-react"
 import { RouteGuard } from "@/components/route-guard"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,7 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,54 +40,48 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 
-type Usuario = {
-  id_usuario: number
+type Empresa = {
+  id_empresa: number
   nombre: string
-  correo: string
-  id_rol: number
-  nombre_rol: string
+  rfc: string | null
+  direccion: string | null
+  telefono: string | null
+  correo: string | null
   created_at: string
 }
 
-const ROLE_LABELS: Record<number, string> = {
-  1: "Administrador",
-  2: "Gerente de Cartera",
-  3: "Analista",
-}
-
-export default function AdminUsuariosPage() {
+export default function AdminEmpresasPage() {
   return (
     <RouteGuard allowedRoles={["admin"]}>
-      <AdminUsuariosContent />
+      <AdminEmpresasContent />
     </RouteGuard>
   )
 }
 
-function AdminUsuariosContent() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([])
+function AdminEmpresasContent() {
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loading, setLoading] = useState(true)
   const [openForm, setOpenForm] = useState(false)
-  const [editing, setEditing] = useState<Usuario | null>(null)
-  const [toDelete, setToDelete] = useState<Usuario | null>(null)
+  const [editing, setEditing] = useState<Empresa | null>(null)
+  const [toDelete, setToDelete] = useState<Empresa | null>(null)
   const [error, setError] = useState("")
 
-  // Cargar usuarios al montar
+  // Cargar empresas al montar
   useEffect(() => {
-    cargarUsuarios()
+    cargarEmpresas()
   }, [])
 
-  const cargarUsuarios = async () => {
+  const cargarEmpresas = async () => {
     try {
       setLoading(true)
-      const res = await fetch("/api/usuarios")
+      const res = await fetch("/api/empresas")
       const data = await res.json()
       if (data.success) {
-        setUsuarios(data.data)
+        setEmpresas(data.data)
       } else {
-        setError(data.error || "Error cargando usuarios")
+        setError(data.error || "Error cargando empresas")
       }
     } catch (err) {
       setError("Error conectando con el servidor")
@@ -103,8 +96,8 @@ function AdminUsuariosContent() {
     setOpenForm(true)
   }
 
-  const handleEdit = (u: Usuario) => {
-    setEditing(u)
+  const handleEdit = (e: Empresa) => {
+    setEditing(e)
     setError("")
     setOpenForm(true)
   }
@@ -112,34 +105,34 @@ function AdminUsuariosContent() {
   const handleDelete = async () => {
     if (!toDelete) return
     try {
-      const res = await fetch(`/api/usuarios/${toDelete.id_usuario}`, {
+      const res = await fetch(`/api/empresas/${toDelete.id_empresa}`, {
         method: "DELETE",
       })
       const data = await res.json()
       if (data.success) {
-        await cargarUsuarios()
+        await cargarEmpresas()
         setToDelete(null)
       } else {
         setError(data.error)
       }
     } catch (err) {
-      setError("Error eliminando usuario")
+      setError("Error eliminando empresa")
     }
   }
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
       <PageHeader
-        title="Gestión de usuarios"
-        description="Alta, edición y eliminación de usuarios del sistema."
+        title="Gestión de empresas"
+        description="Registro y administración de empresas cliente."
         crumbs={[
           { label: "Inicio", href: "/dashboard" },
-          { label: "Usuarios" },
+          { label: "Empresas" },
         ]}
         actions={
           <Button size="sm" onClick={handleNew} disabled={loading}>
             <Plus className="mr-2 h-4 w-4" />
-            Nuevo usuario
+            Nueva empresa
           </Button>
         }
       />
@@ -159,8 +152,9 @@ function AdminUsuariosContent() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
+                  <TableHead>RFC</TableHead>
                   <TableHead>Correo</TableHead>
-                  <TableHead>Rol</TableHead>
+                  <TableHead>Teléfono</TableHead>
                   <TableHead className="w-12 text-right">
                     <span className="sr-only">Acciones</span>
                   </TableHead>
@@ -169,48 +163,47 @@ function AdminUsuariosContent() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="p-4 text-center">
+                    <TableCell colSpan={5} className="p-4 text-center">
                       <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
                       Cargando...
                     </TableCell>
                   </TableRow>
-                ) : usuarios.length === 0 ? (
+                ) : empresas.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="p-0">
+                    <TableCell colSpan={5} className="p-0">
                       <Empty className="border-0">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
-                            <Users className="h-6 w-6" />
+                            <Building2 className="h-6 w-6" />
                           </EmptyMedia>
-                          <EmptyTitle>Sin usuarios registrados</EmptyTitle>
-                          <EmptyDescription>Crea el primer usuario para comenzar.</EmptyDescription>
+                          <EmptyTitle>Sin empresas registradas</EmptyTitle>
+                          <EmptyDescription>Crea la primera empresa para comenzar.</EmptyDescription>
                         </EmptyHeader>
                       </Empty>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  usuarios.map((u) => (
-                    <TableRow key={u.id_usuario}>
-                      <TableCell className="font-medium">{u.nombre}</TableCell>
-                      <TableCell className="text-muted-foreground">{u.correo}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{ROLE_LABELS[u.id_rol]}</Badge>
-                      </TableCell>
+                  empresas.map((e) => (
+                    <TableRow key={e.id_empresa}>
+                      <TableCell className="font-medium">{e.nombre}</TableCell>
+                      <TableCell className="text-muted-foreground">{e.rfc || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{e.correo || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{e.telefono || "—"}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" aria-label={`Acciones para ${u.nombre}`}>
+                            <Button variant="ghost" size="icon" aria-label={`Acciones para ${e.nombre}`}>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(u)}>
+                            <DropdownMenuItem onClick={() => handleEdit(e)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
-                              onClick={() => setToDelete(u)}
+                              onClick={() => setToDelete(e)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Eliminar
@@ -227,21 +220,21 @@ function AdminUsuariosContent() {
         </CardContent>
       </Card>
 
-      <UsuarioFormDialog
+      <EmpresaFormDialog
         open={openForm}
         onOpenChange={setOpenForm}
-        usuario={editing}
-        onSave={cargarUsuarios}
+        empresa={editing}
+        onSave={cargarEmpresas}
         onError={setError}
       />
 
       <AlertDialog open={Boolean(toDelete)} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar empresa?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará la cuenta de{" "}
-              <span className="font-medium">{toDelete?.nombre}</span> y sus accesos al sistema.
+              Esta acción no se puede deshacer. Se eliminará{" "}
+              <span className="font-medium">{toDelete?.nombre}</span> y todos sus datos asociados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -256,24 +249,25 @@ function AdminUsuariosContent() {
   )
 }
 
-function UsuarioFormDialog({
+function EmpresaFormDialog({
   open,
   onOpenChange,
-  usuario,
+  empresa,
   onSave,
   onError,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  usuario: Usuario | null
+  empresa: Empresa | null
   onSave: () => void
   onError: (error: string) => void
 }) {
-  const esEdicion = Boolean(usuario)
-  const [nombre, setNombre] = useState(usuario?.nombre ?? "")
-  const [correo, setCorreo] = useState(usuario?.correo ?? "")
-  const [password, setPassword] = useState("")
-  const [rolId, setRolId] = useState((usuario?.id_rol ?? 3).toString())
+  const esEdicion = Boolean(empresa)
+  const [nombre, setNombre] = useState(empresa?.nombre ?? "")
+  const [rfc, setRfc] = useState(empresa?.rfc ?? "")
+  const [correo, setCorreo] = useState(empresa?.correo ?? "")
+  const [telefono, setTelefono] = useState(empresa?.telefono ?? "")
+  const [direccion, setDireccion] = useState(empresa?.direccion ?? "")
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -282,17 +276,15 @@ function UsuarioFormDialog({
     setLoading(true)
 
     try {
-      const url = esEdicion ? `/api/usuarios/${usuario!.id_usuario}` : "/api/usuarios"
+      const url = esEdicion ? `/api/empresas/${empresa!.id_empresa}` : "/api/empresas"
       const method = esEdicion ? "PUT" : "POST"
 
-      const payload: any = {
+      const payload = {
         nombre,
-        correo,
-        id_rol: parseInt(rolId),
-      }
-
-      if (!esEdicion || password) {
-        payload.password = password
+        rfc: rfc || null,
+        correo: correo || null,
+        telefono: telefono || null,
+        direccion: direccion || null,
       }
 
       const res = await fetch(url, {
@@ -306,12 +298,13 @@ function UsuarioFormDialog({
       if (data.success) {
         onOpenChange(false)
         setNombre("")
+        setRfc("")
         setCorreo("")
-        setPassword("")
-        setRolId("3")
+        setTelefono("")
+        setDireccion("")
         onSave()
       } else {
-        onError(data.error || "Error guardando usuario")
+        onError(data.error || "Error guardando empresa")
       }
     } catch (err) {
       onError("Error conectando con el servidor")
@@ -322,22 +315,22 @@ function UsuarioFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{esEdicion ? "Editar usuario" : "Nuevo usuario"}</DialogTitle>
+          <DialogTitle>{esEdicion ? "Editar empresa" : "Nueva empresa"}</DialogTitle>
           <DialogDescription>
             {esEdicion
-              ? "Actualiza la información y el rol del usuario."
-              : "Registra un nuevo usuario y asígnale un rol en el sistema."}
+              ? "Actualiza la información de la empresa."
+              : "Registra una nueva empresa cliente."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="u-nombre">Nombre completo</FieldLabel>
+              <FieldLabel htmlFor="e-nombre">Nombre de la empresa</FieldLabel>
               <Input
-                id="u-nombre"
+                id="e-nombre"
                 type="text"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
@@ -347,43 +340,47 @@ function UsuarioFormDialog({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="u-email">Correo electrónico</FieldLabel>
+              <FieldLabel htmlFor="e-rfc">RFC</FieldLabel>
               <Input
-                id="u-email"
-                type="email"
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-                required
+                id="e-rfc"
+                type="text"
+                value={rfc}
+                onChange={(e) => setRfc(e.target.value)}
+                placeholder="Ej: ABC123456XYZ"
                 disabled={loading}
               />
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="u-rol">Rol</FieldLabel>
-              <Select value={rolId} onValueChange={setRolId} disabled={loading}>
-                <SelectTrigger id="u-rol">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Administrador</SelectItem>
-                  <SelectItem value="2">Gerente de Cartera</SelectItem>
-                  <SelectItem value="3">Analista</SelectItem>
-                </SelectContent>
-              </Select>
+              <FieldLabel htmlFor="e-email">Correo electrónico</FieldLabel>
+              <Input
+                id="e-email"
+                type="email"
+                value={correo}
+                onChange={(e) => setCorreo(e.target.value)}
+                disabled={loading}
+              />
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="u-password">
-                {esEdicion ? "Nueva contraseña (dejar vacío para no cambiar)" : "Contraseña"}
-              </FieldLabel>
+              <FieldLabel htmlFor="e-telefono">Teléfono</FieldLabel>
               <Input
-                id="u-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required={!esEdicion}
+                id="e-telefono"
+                type="tel"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
                 disabled={loading}
-                minLength={6}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="e-direccion">Dirección</FieldLabel>
+              <Input
+                id="e-direccion"
+                type="text"
+                value={direccion}
+                onChange={(e) => setDireccion(e.target.value)}
+                disabled={loading}
               />
             </Field>
           </FieldGroup>
@@ -399,7 +396,7 @@ function UsuarioFormDialog({
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {esEdicion ? "Guardar cambios" : "Crear usuario"}
+              {esEdicion ? "Guardar cambios" : "Crear empresa"}
             </Button>
           </DialogFooter>
         </form>

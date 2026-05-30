@@ -3,7 +3,6 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
 import { NavBar } from '@/components/nav-bar'
-import { AppPrivyProvider } from '@/components/dynamic-provider'
 
 export const metadata: Metadata = {
   title: 'SoftCom Solutions — Plataforma de Valuación de Bonos',
@@ -41,12 +40,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-sans antialiased">
-        <AppPrivyProvider>
-          <AuthProvider>
-            <NavBar />
-            <main>{children}</main>
-          </AuthProvider>
-        </AppPrivyProvider>
+        <AuthProvider>
+          <NavBar />
+          <main>{children}</main>
+        </AuthProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

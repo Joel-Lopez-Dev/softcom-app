@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { MoreHorizontal, Plus, Pencil, Trash2, Users, Loader2 } from "lucide-react"
+import { MoreHorizontal, Plus, Pencil, Trash2, Coins, Loader2 } from "lucide-react"
 import { RouteGuard } from "@/components/route-guard"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -44,51 +44,54 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 
-type Usuario = {
-  id_usuario: number
-  nombre: string
-  correo: string
-  id_rol: number
-  nombre_rol: string
+type Instrumento = {
+  id_instrumento: number
+  tipo: string
+  ticker: string
+  valor_nominal: number
+  rendimiento_esperado?: number
+  vencimiento: string
   created_at: string
 }
 
-const ROLE_LABELS: Record<number, string> = {
-  1: "Administrador",
-  2: "Gerente de Cartera",
-  3: "Analista",
+const TIPO_LABELS: Record<string, string> = {
+  cete: "CETE",
+  bono_m: "Bono M",
+  udibono: "UDIBONO",
+  accion: "Acción",
+  derivado: "Derivado",
 }
 
-export default function AdminUsuariosPage() {
+export default function AdminInstrumentosPage() {
   return (
     <RouteGuard allowedRoles={["admin"]}>
-      <AdminUsuariosContent />
+      <AdminInstrumentosContent />
     </RouteGuard>
   )
 }
 
-function AdminUsuariosContent() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([])
+function AdminInstrumentosContent() {
+  const [instrumentos, setInstrumentos] = useState<Instrumento[]>([])
   const [loading, setLoading] = useState(true)
   const [openForm, setOpenForm] = useState(false)
-  const [editing, setEditing] = useState<Usuario | null>(null)
-  const [toDelete, setToDelete] = useState<Usuario | null>(null)
+  const [editing, setEditing] = useState<Instrumento | null>(null)
+  const [toDelete, setToDelete] = useState<Instrumento | null>(null)
   const [error, setError] = useState("")
 
-  // Cargar usuarios al montar
+  // Cargar instrumentos al montar
   useEffect(() => {
-    cargarUsuarios()
+    cargarInstrumentos()
   }, [])
 
-  const cargarUsuarios = async () => {
+  const cargarInstrumentos = async () => {
     try {
       setLoading(true)
-      const res = await fetch("/api/usuarios")
+      const res = await fetch("/api/instrumentos")
       const data = await res.json()
       if (data.success) {
-        setUsuarios(data.data)
+        setInstrumentos(data.data)
       } else {
-        setError(data.error || "Error cargando usuarios")
+        setError(data.error || "Error cargando instrumentos")
       }
     } catch (err) {
       setError("Error conectando con el servidor")
@@ -103,8 +106,8 @@ function AdminUsuariosContent() {
     setOpenForm(true)
   }
 
-  const handleEdit = (u: Usuario) => {
-    setEditing(u)
+  const handleEdit = (i: Instrumento) => {
+    setEditing(i)
     setError("")
     setOpenForm(true)
   }
@@ -112,34 +115,34 @@ function AdminUsuariosContent() {
   const handleDelete = async () => {
     if (!toDelete) return
     try {
-      const res = await fetch(`/api/usuarios/${toDelete.id_usuario}`, {
+      const res = await fetch(`/api/instrumentos/${toDelete.id_instrumento}`, {
         method: "DELETE",
       })
       const data = await res.json()
       if (data.success) {
-        await cargarUsuarios()
+        await cargarInstrumentos()
         setToDelete(null)
       } else {
         setError(data.error)
       }
     } catch (err) {
-      setError("Error eliminando usuario")
+      setError("Error eliminando instrumento")
     }
   }
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
       <PageHeader
-        title="Gestión de usuarios"
-        description="Alta, edición y eliminación de usuarios del sistema."
+        title="Catálogo de Instrumentos"
+        description="Administración de CETES, Bonos M, UDIBONOS, Derivados y Acciones."
         crumbs={[
           { label: "Inicio", href: "/dashboard" },
-          { label: "Usuarios" },
+          { label: "Instrumentos" },
         ]}
         actions={
           <Button size="sm" onClick={handleNew} disabled={loading}>
             <Plus className="mr-2 h-4 w-4" />
-            Nuevo usuario
+            Nuevo instrumento
           </Button>
         }
       />
@@ -158,9 +161,11 @@ function AdminUsuariosContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Correo</TableHead>
-                  <TableHead>Rol</TableHead>
+                  <TableHead>Ticker</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Valor Nominal</TableHead>
+                  <TableHead>Rendimiento</TableHead>
+                  <TableHead>Vencimiento</TableHead>
                   <TableHead className="w-12 text-right">
                     <span className="sr-only">Acciones</span>
                   </TableHead>
@@ -169,48 +174,56 @@ function AdminUsuariosContent() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="p-4 text-center">
+                    <TableCell colSpan={6} className="p-4 text-center">
                       <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
                       Cargando...
                     </TableCell>
                   </TableRow>
-                ) : usuarios.length === 0 ? (
+                ) : instrumentos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="p-0">
+                    <TableCell colSpan={6} className="p-0">
                       <Empty className="border-0">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
-                            <Users className="h-6 w-6" />
+                            <Coins className="h-6 w-6" />
                           </EmptyMedia>
-                          <EmptyTitle>Sin usuarios registrados</EmptyTitle>
-                          <EmptyDescription>Crea el primer usuario para comenzar.</EmptyDescription>
+                          <EmptyTitle>Sin instrumentos registrados</EmptyTitle>
+                          <EmptyDescription>Crea el primer instrumento para comenzar.</EmptyDescription>
                         </EmptyHeader>
                       </Empty>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  usuarios.map((u) => (
-                    <TableRow key={u.id_usuario}>
-                      <TableCell className="font-medium">{u.nombre}</TableCell>
-                      <TableCell className="text-muted-foreground">{u.correo}</TableCell>
+                  instrumentos.map((i) => (
+                    <TableRow key={i.id_instrumento}>
+                      <TableCell className="font-medium">{i.ticker}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{ROLE_LABELS[u.id_rol]}</Badge>
+                        <Badge variant="secondary">{TIPO_LABELS[i.tipo] || i.tipo}</Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        ${i.valor_nominal.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {i.rendimiento_esperado ? i.rendimiento_esperado.toFixed(2) : "—"}%
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(i.vencimiento).toLocaleDateString("es-MX")}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" aria-label={`Acciones para ${u.nombre}`}>
+                            <Button variant="ghost" size="icon" aria-label={`Acciones para ${i.ticker}`}>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(u)}>
+                            <DropdownMenuItem onClick={() => handleEdit(i)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
-                              onClick={() => setToDelete(u)}
+                              onClick={() => setToDelete(i)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Eliminar
@@ -227,21 +240,21 @@ function AdminUsuariosContent() {
         </CardContent>
       </Card>
 
-      <UsuarioFormDialog
+      <InstrumentoFormDialog
         open={openForm}
         onOpenChange={setOpenForm}
-        usuario={editing}
-        onSave={cargarUsuarios}
+        instrumento={editing}
+        onSave={cargarInstrumentos}
         onError={setError}
       />
 
       <AlertDialog open={Boolean(toDelete)} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar instrumento?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará la cuenta de{" "}
-              <span className="font-medium">{toDelete?.nombre}</span> y sus accesos al sistema.
+              Esta acción no se puede deshacer. Se eliminará{" "}
+              <span className="font-medium">{toDelete?.ticker}</span> del catálogo.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -256,24 +269,27 @@ function AdminUsuariosContent() {
   )
 }
 
-function UsuarioFormDialog({
+function InstrumentoFormDialog({
   open,
   onOpenChange,
-  usuario,
+  instrumento,
   onSave,
   onError,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  usuario: Usuario | null
+  instrumento: Instrumento | null
   onSave: () => void
   onError: (error: string) => void
 }) {
-  const esEdicion = Boolean(usuario)
-  const [nombre, setNombre] = useState(usuario?.nombre ?? "")
-  const [correo, setCorreo] = useState(usuario?.correo ?? "")
-  const [password, setPassword] = useState("")
-  const [rolId, setRolId] = useState((usuario?.id_rol ?? 3).toString())
+  const esEdicion = Boolean(instrumento)
+  const [ticker, setTicker] = useState(instrumento?.ticker ?? "")
+  const [tipo, setTipo] = useState(instrumento?.tipo ?? "cete")
+  const [valorNominal, setValorNominal] = useState((instrumento?.valor_nominal ?? "").toString())
+  const [rendimiento, setRendimiento] = useState((instrumento?.rendimiento_esperado ?? "").toString())
+  const [vencimiento, setVencimiento] = useState(
+    instrumento?.vencimiento ? new Date(instrumento.vencimiento).toISOString().split("T")[0] : ""
+  )
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -282,17 +298,15 @@ function UsuarioFormDialog({
     setLoading(true)
 
     try {
-      const url = esEdicion ? `/api/usuarios/${usuario!.id_usuario}` : "/api/usuarios"
+      const url = esEdicion ? `/api/instrumentos/${instrumento!.id_instrumento}` : "/api/instrumentos"
       const method = esEdicion ? "PUT" : "POST"
 
-      const payload: any = {
-        nombre,
-        correo,
-        id_rol: parseInt(rolId),
-      }
-
-      if (!esEdicion || password) {
-        payload.password = password
+      const payload = {
+        ticker,
+        tipo,
+        valor_nominal: parseFloat(valorNominal),
+        rendimiento_esperado: parseFloat(rendimiento),
+        vencimiento: new Date(vencimiento).toISOString(),
       }
 
       const res = await fetch(url, {
@@ -305,13 +319,14 @@ function UsuarioFormDialog({
 
       if (data.success) {
         onOpenChange(false)
-        setNombre("")
-        setCorreo("")
-        setPassword("")
-        setRolId("3")
+        setTicker("")
+        setTipo("cete")
+        setValorNominal("")
+        setRendimiento("")
+        setVencimiento("")
         onSave()
       } else {
-        onError(data.error || "Error guardando usuario")
+        onError(data.error || "Error guardando instrumento")
       }
     } catch (err) {
       onError("Error conectando con el servidor")
@@ -324,66 +339,79 @@ function UsuarioFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{esEdicion ? "Editar usuario" : "Nuevo usuario"}</DialogTitle>
+          <DialogTitle>{esEdicion ? "Editar instrumento" : "Nuevo instrumento"}</DialogTitle>
           <DialogDescription>
             {esEdicion
-              ? "Actualiza la información y el rol del usuario."
-              : "Registra un nuevo usuario y asígnale un rol en el sistema."}
+              ? "Actualiza la información del instrumento."
+              : "Registra un nuevo instrumento en el catálogo."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="u-nombre">Nombre completo</FieldLabel>
+              <FieldLabel htmlFor="i-ticker">Ticker</FieldLabel>
               <Input
-                id="u-nombre"
+                id="i-ticker"
                 type="text"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
+                value={ticker}
+                onChange={(e) => setTicker(e.target.value)}
                 required
                 disabled={loading}
               />
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="u-email">Correo electrónico</FieldLabel>
-              <Input
-                id="u-email"
-                type="email"
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="u-rol">Rol</FieldLabel>
-              <Select value={rolId} onValueChange={setRolId} disabled={loading}>
-                <SelectTrigger id="u-rol">
+              <FieldLabel htmlFor="i-tipo">Tipo</FieldLabel>
+              <Select value={tipo} onValueChange={setTipo} disabled={loading}>
+                <SelectTrigger id="i-tipo">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Administrador</SelectItem>
-                  <SelectItem value="2">Gerente de Cartera</SelectItem>
-                  <SelectItem value="3">Analista</SelectItem>
+                  <SelectItem value="cete">CETE</SelectItem>
+                  <SelectItem value="bono_m">Bono M</SelectItem>
+                  <SelectItem value="udibono">UDIBONO</SelectItem>
+                  <SelectItem value="accion">Acción</SelectItem>
+                  <SelectItem value="derivado">Derivado</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="u-password">
-                {esEdicion ? "Nueva contraseña (dejar vacío para no cambiar)" : "Contraseña"}
-              </FieldLabel>
+              <FieldLabel htmlFor="i-vn">Valor Nominal</FieldLabel>
               <Input
-                id="u-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required={!esEdicion}
+                id="i-vn"
+                type="number"
+                step="0.01"
+                value={valorNominal}
+                onChange={(e) => setValorNominal(e.target.value)}
+                required
                 disabled={loading}
-                minLength={6}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="i-rendimiento">Rendimiento Esperado (%)</FieldLabel>
+              <Input
+                id="i-rendimiento"
+                type="number"
+                step="0.01"
+                value={rendimiento}
+                onChange={(e) => setRendimiento(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="i-vencimiento">Vencimiento</FieldLabel>
+              <Input
+                id="i-vencimiento"
+                type="date"
+                value={vencimiento}
+                onChange={(e) => setVencimiento(e.target.value)}
+                required
+                disabled={loading}
               />
             </Field>
           </FieldGroup>
@@ -399,7 +427,7 @@ function UsuarioFormDialog({
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {esEdicion ? "Guardar cambios" : "Crear usuario"}
+              {esEdicion ? "Guardar cambios" : "Crear instrumento"}
             </Button>
           </DialogFooter>
         </form>

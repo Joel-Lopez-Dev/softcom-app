@@ -2,52 +2,43 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { TrendingUp, Shield, PieChart, Loader2, ArrowRight, RotateCcw } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
-import { usePrivy, useLoginWithEmail, useLoginWithOAuth } from "@privy-io/react-auth"
+import { TrendingUp, Shield, PieChart, ArrowRight, Lock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { getMockUser, useAuth } from "@/lib/auth-context"
+
+const MOCK_ACCOUNTS = [
+  { email: "admin@softcom.mx", nombre: "Carlos Admin", role: "admin", desc: "Administrador del Sistema" },
+  { email: "gerente@softcom.mx", nombre: "Sofía Gerente", role: "gerente_cartera", desc: "Gerente de Cartera" },
+  { email: "analyst@softcom.mx", nombre: "Diego Analyst", role: "analyst", desc: "Analista de Inversiones" },
+]
 
 export default function LoginPage() {
-  const { user } = useAuth()
-  const { ready } = usePrivy()
-  const { sendCode, loginWithCode } = useLoginWithEmail()
-  const { initOAuth } = useLoginWithOAuth()
   const router = useRouter()
-
-  const [email, setEmail] = useState("")
-  const [code, setCode] = useState("")
-  const [step, setStep] = useState<"email" | "otp">("email")
+  const { user } = useAuth()
+  const [selectedEmail, setSelectedEmail] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) router.push("/dashboard")
   }, [user, router])
 
-  const handleSendCode = async () => {
-    if (!email.trim()) return
+  const handleLogin = async (email: string) => {
     setLoading(true)
-    setError(null)
-    try {
-      await sendCode({ email: email.trim() })
-      setStep("otp")
-    } catch {
-      setError("No se pudo enviar el código. Verifica que el correo sea válido.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleVerifyCode = async () => {
-    if (!code.trim()) return
-    setLoading(true)
-    setError(null)
-    try {
-      await loginWithCode({ code: code.trim() })
-    } catch {
-      setError("Código incorrecto o expirado. Intenta de nuevo.")
-    } finally {
+    setSelectedEmail(email)
+    const mockUser = getMockUser(email)
+    if (mockUser) {
+      localStorage.setItem("softcom_user", JSON.stringify(mockUser))
+      // Disparar evento storage manualmente
+      window.dispatchEvent(new StorageEvent("storage", {
+        key: "softcom_user",
+        newValue: JSON.stringify(mockUser),
+        storageArea: localStorage,
+      }))
+      // Pequeño delay para simular autenticación
+      await new Promise(resolve => setTimeout(resolve, 600))
+      router.push("/dashboard")
+    } else {
       setLoading(false)
     }
   }
@@ -138,155 +129,86 @@ export default function LoginPage() {
           />
         </div>
 
-        <div className="anim-scale-in" style={{ width: "100%", maxWidth: 420 }}>
+        <div className="anim-scale-in" style={{ width: "100%", maxWidth: 480 }}>
           <h2 style={{ fontSize: 26, fontWeight: 800, color: "#0b1629", marginBottom: 6 }}>Iniciar sesión</h2>
-          <p style={{ color: "#64748b", fontSize: 14, marginBottom: 28 }}>Accede con tu cuenta institucional de SOFTCOM.</p>
+          <p style={{ color: "#64748b", fontSize: 14, marginBottom: 28 }}>Selecciona una cuenta de demostración para acceder a SoftCom.</p>
 
           <div style={{
             background: "#fff",
             borderRadius: 12,
             border: "1.5px solid #e2e8f0",
-            padding: "28px 28px 24px",
+            padding: "24px",
             boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+            display: "flex", flexDirection: "column", gap: 12,
           }}>
-            {!ready ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 220 }}>
-                <Loader2 size={24} color="#00c2e0" style={{ animation: "spin 1s linear infinite" }} />
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-                {/* Google */}
-                <button
-                  onClick={() => initOAuth({ provider: "google" })}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                    width: "100%", padding: "11px 16px",
-                    background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 8,
-                    fontSize: 14, fontWeight: 600, color: "#0b1629", cursor: "pointer",
-                    transition: "border-color 0.15s, box-shadow 0.15s",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#00c2e0"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(0,194,224,0.1)" }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none" }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  Continuar con Google
-                </button>
-
-                {/* Separator */}
-                <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "4px 0" }}>
-                  <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
-                  <span style={{ color: "#94a3b8", fontSize: 12 }}>o continúa con correo</span>
-                  <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
+            {MOCK_ACCOUNTS.map((account) => (
+              <button
+                key={account.email}
+                onClick={() => handleLogin(account.email)}
+                disabled={loading}
+                style={{
+                  display: "flex", alignItems: "center", gap: 14,
+                  width: "100%", padding: "14px 16px",
+                  background: "#f8fafc", border: "1.5px solid #e2e8f0", borderRadius: 8,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                  opacity: loading && selectedEmail !== account.email ? 0.5 : 1,
+                }}
+                onMouseEnter={e => {
+                  if (!loading) {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "#00c2e0"
+                    ;(e.currentTarget as HTMLButtonElement).style.background = "rgba(0,194,224,0.04)"
+                  }
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0"
+                  ;(e.currentTarget as HTMLButtonElement).style.background = "#f8fafc"
+                }}
+              >
+                <div style={{
+                  width: 44, height: 44, borderRadius: 9,
+                  background: "linear-gradient(135deg, #00c2e0, #1a3a6b)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0, color: "#fff", fontWeight: 700, fontSize: 14,
+                }}>
+                  {account.nombre.split(" ").map(n => n[0]).join("")}
                 </div>
 
-                {/* Email / OTP */}
-                {step === "email" ? (
-                  <>
-                    <input
-                      type="email"
-                      placeholder="correo@empresa.mx"
-                      value={email}
-                      onChange={e => { setEmail(e.target.value); setError(null) }}
-                      onKeyDown={e => e.key === "Enter" && handleSendCode()}
-                      style={{
-                        width: "100%", padding: "10px 14px", borderRadius: 8,
-                        border: "1.5px solid #e2e8f0", fontSize: 14, outline: "none",
-                        boxSizing: "border-box", color: "#0b1629",
-                      }}
-                      onFocus={e => e.currentTarget.style.borderColor = "#00c2e0"}
-                      onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
-                    />
-                    <button
-                      onClick={handleSendCode}
-                      disabled={loading || !email.trim()}
-                      style={{
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                        width: "100%", padding: "11px 16px",
-                        background: loading || !email.trim() ? "#e2e8f0" : "#00c2e0",
-                        border: "none", borderRadius: 8,
-                        fontSize: 14, fontWeight: 600,
-                        color: loading || !email.trim() ? "#94a3b8" : "#fff",
-                        cursor: loading || !email.trim() ? "not-allowed" : "pointer",
-                        transition: "background 0.15s",
-                      }}
-                    >
-                      {loading
-                        ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                        : <><span>Enviar código</span><ArrowRight size={15} /></>
-                      }
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>
-                      Ingresa el código de 6 dígitos enviado a <strong>{email}</strong>
-                    </p>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="000000"
-                      maxLength={6}
-                      value={code}
-                      onChange={e => { setCode(e.target.value.replace(/\D/g, "")); setError(null) }}
-                      onKeyDown={e => e.key === "Enter" && handleVerifyCode()}
-                      style={{
-                        width: "100%", padding: "10px 14px", borderRadius: 8,
-                        border: "1.5px solid #e2e8f0", fontSize: 20, letterSpacing: 8,
-                        textAlign: "center", outline: "none", boxSizing: "border-box", color: "#0b1629",
-                      }}
-                      onFocus={e => e.currentTarget.style.borderColor = "#00c2e0"}
-                      onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleVerifyCode}
-                      disabled={loading || code.length < 6}
-                      style={{
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                        width: "100%", padding: "11px 16px",
-                        background: loading || code.length < 6 ? "#e2e8f0" : "#00c2e0",
-                        border: "none", borderRadius: 8,
-                        fontSize: 14, fontWeight: 600,
-                        color: loading || code.length < 6 ? "#94a3b8" : "#fff",
-                        cursor: loading || code.length < 6 ? "not-allowed" : "pointer",
-                        transition: "background 0.15s",
-                      }}
-                    >
-                      {loading
-                        ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                        : "Verificar código"
-                      }
-                    </button>
-                    <button
-                      onClick={() => { setStep("email"); setCode(""); setError(null) }}
-                      style={{
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                        background: "none", border: "none", color: "#64748b",
-                        fontSize: 13, cursor: "pointer", padding: "4px 0",
-                      }}
-                    >
-                      <RotateCcw size={13} />
-                      Usar otro correo
-                    </button>
-                  </>
-                )}
+                <div style={{ flex: 1, textAlign: "left" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#0b1629" }}>
+                    {account.nombre}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                    {account.desc}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 2 }}>
+                    {account.email}
+                  </div>
+                </div>
 
-                {error && (
-                  <p style={{ color: "#ef4444", fontSize: 13, margin: 0, textAlign: "center" }}>{error}</p>
+                {loading && selectedEmail === account.email ? (
+                  <div style={{
+                    width: 24, height: 24, borderRadius: "50%",
+                    border: "2px solid #e2e8f0", borderTopColor: "#00c2e0",
+                    animation: "spin 0.8s linear infinite",
+                  }} />
+                ) : (
+                  <ArrowRight size={18} color="#94a3b8" />
                 )}
-              </div>
-            )}
+              </button>
+            ))}
           </div>
 
-          <p style={{ color: "#94a3b8", fontSize: 12, marginTop: 16, textAlign: "center" }}>
-            Las cuentas son creadas por un administrador.
-          </p>
+          <div style={{
+            background: "rgba(0,194,224,0.05)", border: "1px solid rgba(0,194,224,0.15)",
+            borderRadius: 8, padding: "12px 14px", marginTop: 16,
+            display: "flex", gap: 8, alignItems: "flex-start",
+          }}>
+            <Lock size={13} color="#00c2e0" style={{ marginTop: 2, flexShrink: 0 }} />
+            <p style={{ fontSize: 12, color: "#64748b", margin: 0, lineHeight: 1.5 }}>
+              Ambiente de desarrollo local. Los datos son simulados para testing.
+            </p>
+          </div>
         </div>
 
         <div style={{ textAlign: "center", marginTop: 28 }}>
@@ -300,7 +222,9 @@ export default function LoginPage() {
       </div>
 
       <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
       `}</style>
     </div>
   )

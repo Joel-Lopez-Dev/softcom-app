@@ -1,7 +1,6 @@
 "use client"
 
-import { createContext, useContext, type ReactNode } from "react"
-import { usePrivy } from "@privy-io/react-auth"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
 export type Role = "admin" | "gerente_cartera" | "analyst"
 
@@ -15,39 +14,75 @@ export type User = {
 type AuthContextType = {
   user: User | null
   logout: () => void
+  isLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Fallback para demo: si el usuario no tiene metadata.role, se resuelve por email.
-const ROLE_BY_EMAIL: Record<string, Role> = {
-  "admin@softcom.mx":   "admin",
-  "gerente@softcom.mx": "gerente_cartera",
-  "analyst@softcom.mx": "analyst",
-}
-
-function resolveRole(email: string | null | undefined): Role {
-  if (email && ROLE_BY_EMAIL[email]) return ROLE_BY_EMAIL[email]
-  return "analyst"
+// Mock users para desarrollo local
+const MOCK_USERS: Record<string, User> = {
+  "admin@softcom.mx": {
+    id: "1",
+    nombre: "Carlos Admin",
+    email: "admin@softcom.mx",
+    role: "admin",
+  },
+  "gerente@softcom.mx": {
+    id: "2",
+    nombre: "Sofía Gerente",
+    email: "gerente@softcom.mx",
+    role: "gerente_cartera",
+  },
+  "analyst@softcom.mx": {
+    id: "3",
+    nombre: "Diego Analyst",
+    email: "analyst@softcom.mx",
+    role: "analyst",
+  },
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { user: privyUser, logout: privyLogout } = usePrivy()
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const email = privyUser?.email?.address ?? privyUser?.google?.email ?? null
-  const nombre = privyUser?.google?.name ?? email ?? privyUser?.id ?? ""
-
-  const user: User | null = privyUser
-    ? {
-        id: privyUser.id,
-        nombre,
-        email: email ?? "",
-        role: resolveRole(email),
+  // Función para cargar usuario desde localStorage
+  const loadUser = () => {
+    const stored = localStorage.getItem("softcom_user")
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored))
+      } catch {
+        setUser(null)
       }
-    : null
+    } else {
+      setUser(null)
+    }
+  }
+
+  // Cargar usuario al montar y escuchar cambios
+  useEffect(() => {
+    loadUser()
+    setIsLoading(false)
+    
+    // Escuchar cambios en localStorage
+    const handleStorageChange = () => {
+      loadUser()
+    }
+    
+    window.addEventListener("storage", handleStorageChange)
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+    }
+  }, [])
+
+  const logout = () => {
+    setUser(null)
+    localStorage.removeItem("softcom_user")
+  }
 
   return (
-    <AuthContext.Provider value={{ user, logout: privyLogout }}>
+    <AuthContext.Provider value={{ user, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   )
@@ -57,4 +92,9 @@ export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error("useAuth debe usarse dentro de AuthProvider")
   return ctx
+}
+
+// Helper para login (usado desde login page)
+export function getMockUser(email: string) {
+  return MOCK_USERS[email] || null
 }

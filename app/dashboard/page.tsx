@@ -36,7 +36,7 @@ const MENU: MenuItem[] = [
     color: "#a855f7",
   },
   {
-    href: "/admin/usuarios",
+    href: "/admin/empresas",
     title: "Empresas Cliente",
     description: "Registro y administración de empresas cliente con KYC. Cada empresa tiene su propio portafolio.",
     icon: Building2,
@@ -44,7 +44,7 @@ const MENU: MenuItem[] = [
     color: "#00c2e0",
   },
   {
-    href: "/admin/usuarios",
+    href: "/admin/instrumentos",
     title: "Catálogo de Instrumentos",
     description: "Administra CETES, Bonos M, UDIBONOS, Derivados y Acciones disponibles para inversión.",
     icon: Coins,
@@ -699,7 +699,7 @@ function DashboardContent() {
             {[
               { dot: "#22c55e", label: "Sistema operando" },
               { dot: "#00c2e0", label: "Motor PostgreSQL" },
-              { dot: "#3b82f6", label: "Privy Auth activo" },
+              { dot: "#3b82f6", label: "Autenticación Local" },
             ].map((s, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 7, height: 7, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />

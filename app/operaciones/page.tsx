@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import {
   ShoppingCart, Banknote, CheckCircle, AlertTriangle,
   ChevronDown, ArrowRight, RotateCcw, Clock,
@@ -9,13 +9,22 @@ import { RouteGuard } from "@/components/route-guard"
 import { PageHeader } from "@/components/page-header"
 
 type Operacion = "compra" | "venta"
+type Transaccion = {
+  id_transaccion: number
+  serie: string
+  tipo_operacion: string
+  cantidad: number
+  precio_sucio: number | null
+  monto_total: number
+  created_at: string
+}
 
 // ── Mock instruments available ─────────────────────────────
 const INSTRUMENTOS = [
-  { id: "cetes-28",  label: "CETES 28d",        tipo: "CETES",  precioRef: 9.9123, vto: "2026-06-24" },
-  { id: "cetes-91",  label: "CETES 91d",         tipo: "CETES",  precioRef: 9.8534, vto: "2026-08-26" },
-  { id: "bonom-7",   label: "Bono M 7% 2031",    tipo: "BONO_M", precioRef: 97.20,  vto: "2031-06-05" },
-  { id: "bonom-8",   label: "Bono M 8.5% 2029",  tipo: "BONO_M", precioRef: 99.80,  vto: "2029-12-05" },
+  { id: 1,  label: "CETES 28d",        tipo: "CETES",  precioRef: 9.9123, vto: "2026-06-24" },
+  { id: 2,  label: "CETES 91d",         tipo: "CETES",  precioRef: 9.8534, vto: "2026-08-26" },
+  { id: 4,   label: "Bono M 7% 2031",    tipo: "BONO_M", precioRef: 97.20,  vto: "2031-06-05" },
+  { id: 5,   label: "Bono M 8.5% 2029",  tipo: "BONO_M", precioRef: 99.80,  vto: "2029-12-05" },
 ]
 
 const CLIENTES = [
@@ -25,18 +34,18 @@ const CLIENTES = [
 ]
 
 // ── Mock portfolio (venta only) ────────────────────────────
-const POSICIONES_VENTA: Record<string, { instrId: string; cantidad: number }[]> = {
+const POSICIONES_VENTA: Record<string, { instrId: number; cantidad: number }[]> = {
   "1": [
-    { instrId: "cetes-28", cantidad: 1_000_000 },
-    { instrId: "bonom-7",  cantidad: 20_000 },
-    { instrId: "bonom-8",  cantidad: 5_000 },
+    { instrId: 1, cantidad: 1_000_000 },
+    { instrId: 4,  cantidad: 20_000 },
+    { instrId: 5,  cantidad: 5_000 },
   ],
   "2": [
-    { instrId: "cetes-91", cantidad: 500_000 },
-    { instrId: "bonom-7",  cantidad: 10_000 },
+    { instrId: 2, cantidad: 500_000 },
+    { instrId: 4,  cantidad: 10_000 },
   ],
   "3": [
-    { instrId: "cetes-28", cantidad: 200_000 },
+    { instrId: 1, cantidad: 200_000 },
   ],
 }
 
@@ -133,6 +142,28 @@ function OperacionesContent() {
   const [cantidad, setCantidad] = useState("")
   const [confirmed, setConfirmed] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [transacciones, setTransacciones] = useState<Transaccion[]>([])
+  const [loadingTransacciones, setLoadingTransacciones] = useState(false)
+
+  // Cargar transacciones al montar
+  useEffect(() => {
+    cargarTransacciones()
+  }, [])
+
+  const cargarTransacciones = async () => {
+    try {
+      setLoadingTransacciones(true)
+      const res = await fetch("/api/transacciones?limit=50")
+      const data = await res.json()
+      if (data.success) {
+        setTransacciones(data.data)
+      }
+    } catch (err) {
+      console.error("Error cargando transacciones:", err)
+    } finally {
+      setLoadingTransacciones(false)
+    }
+  }
 
   const cliente = CLIENTES.find(c => c.id === clienteId)
   const instrumento = INSTRUMENTOS.find(i => i.id === instrId)
@@ -160,12 +191,40 @@ function OperacionesContent() {
   const canSubmit = instrId && precio && cantidad &&
     parseFloat(cantidad) >= 1 && parseFloat(precio) > 0 && !excedeCantidad
 
-  const handleConfirm = () => {
-    setShowConfirm(false)
-    setConfirmed(true)
-    // Reset form
-    setInstrId(""); setPrecio(""); setCantidad("")
-    setTimeout(() => setConfirmed(false), 4000)
+  const handleConfirm = async () => {
+    try {
+      // Guardar transacción en BD
+      // Nota: usando portafolio ID=1 por defecto para demostración
+      const res = await fetch("/api/transacciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_portafolio: 1,
+          id_instrumento: parseInt(instrId),
+          tipo_operacion: op,
+          cantidad: parseInt(cantidad),
+          precio_sucio: parseFloat(precio),
+          monto_total: parseFloat(precio) * parseInt(cantidad),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        setShowConfirm(false)
+        setConfirmed(true)
+        // Reset form
+        setInstrId("")
+        setPrecio("")
+        setCantidad("")
+        // Recargar transacciones
+        await cargarTransacciones()
+        setTimeout(() => setConfirmed(false), 4000)
+      }
+    } catch (err) {
+      console.error("Error guardando transacción:", err)
+      setShowConfirm(false)
+    }
   }
 
   // Available instruments for venta (only those in portfolio)
@@ -479,10 +538,63 @@ function OperacionesContent() {
               <p style={{ fontSize: 12, color: "#94a3b8", margin: "2px 0 0" }}>Log trazable e inmutable</p>
             </div>
           </div>
-          <div style={{ padding: "32px 22px", textAlign: "center" }}>
-            <p style={{ color: "#94a3b8", fontSize: 14 }}>
-              Las operaciones confirmadas aparecerán aquí con su timestamp y ID de trazabilidad.
-            </p>
+          <div style={{ padding: "20px 22px" }}>
+            {loadingTransacciones ? (
+              <p style={{ color: "#94a3b8", fontSize: 14, textAlign: "center" }}>Cargando...</p>
+            ) : transacciones.length === 0 ? (
+              <p style={{ color: "#94a3b8", fontSize: 14, textAlign: "center" }}>
+                Las operaciones confirmadas aparecerán aquí con su timestamp y ID de trazabilidad.
+              </p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <th style={{ textAlign: "left", padding: "10px 0", fontWeight: 700, color: "#64748b" }}>Fecha</th>
+                      <th style={{ textAlign: "left", padding: "10px 0", fontWeight: 700, color: "#64748b" }}>Instrumento</th>
+                      <th style={{ textAlign: "center", padding: "10px 0", fontWeight: 700, color: "#64748b" }}>Tipo</th>
+                      <th style={{ textAlign: "right", padding: "10px 0", fontWeight: 700, color: "#64748b" }}>Cantidad</th>
+                      <th style={{ textAlign: "right", padding: "10px 0", fontWeight: 700, color: "#64748b" }}>Precio Unit.</th>
+                      <th style={{ textAlign: "right", padding: "10px 0", fontWeight: 700, color: "#64748b" }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transacciones.map((t) => (
+                      <tr key={t.id_transaccion} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "12px 0", color: "#0b1629", fontSize: 12 }}>
+                          {new Date(t.created_at).toLocaleDateString("es-MX", {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                        <td style={{ padding: "12px 0", color: "#0b1629", fontWeight: 600 }}>
+                          {t.serie || "—"}
+                        </td>
+                        <td style={{
+                          padding: "12px 0", textAlign: "center",
+                          color: t.tipo_operacion === "compra" ? "#22c55e" : "#ef4444",
+                          fontWeight: 700,
+                        }}>
+                          {t.tipo_operacion === "compra" ? "Compra" : "Venta"}
+                        </td>
+                        <td style={{ padding: "12px 0", color: "#0b1629", textAlign: "right" }}>
+                          {fmtInt(t.cantidad)}
+                        </td>
+                        <td style={{ padding: "12px 0", color: "#0b1629", textAlign: "right" }}>
+                          ${t.precio_sucio ? parseFloat(String(t.precio_sucio)).toFixed(4) : "—"}
+                        </td>
+                        <td style={{ padding: "12px 0", color: "#0b1629", textAlign: "right", fontWeight: 600 }}>
+                          {fmtMXN(t.monto_total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>

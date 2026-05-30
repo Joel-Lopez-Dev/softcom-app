@@ -13,7 +13,7 @@ type Props = {
 }
 
 export function RouteGuard({ children, allowedRoles }: Props) {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
@@ -22,13 +22,13 @@ export function RouteGuard({ children, allowedRoles }: Props) {
   }, [])
 
   useEffect(() => {
-    if (!mounted) return
+    if (!mounted || isLoading) return
     if (!user) {
       router.push("/login")
     }
-  }, [mounted, user, router])
+  }, [mounted, user, router, isLoading])
 
-  if (!mounted || !user) {
+  if (!mounted || isLoading || !user) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
